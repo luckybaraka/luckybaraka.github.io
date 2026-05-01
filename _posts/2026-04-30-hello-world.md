@@ -8,4 +8,6 @@ tags: [Hello World]
 
 # Hello World
 
-Hello World this is my personal blog. I love writing personal blogs
+Welcome to my corner of the internet.
+
+This blog is where I share my journey as a backend software engineer — from building systems and exploring cybersecurity to breaking down ideas in a simple, practical way. Expect thoughts, lessons, and real-world experiences along the way.
