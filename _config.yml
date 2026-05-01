@@ -116,6 +116,16 @@ compress_html:
   clippings: all
   comments: all
 
+
+jekyll-archives:
+  enabled: [categories, tags]
+  layouts:
+    category: category
+    tag: tag
+  permalinks:
+    tag: /tags/:name/
+    category: /categories/:name/
+
 exclude:
   - "*.gem"
   - "*.gemspec"
