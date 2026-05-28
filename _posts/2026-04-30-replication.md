@@ -112,7 +112,12 @@ This is called **read-your-own-writes consistency**. Guaranteeing it requires ca
 
 You refresh a live chat stream twice. First refresh: 20 messages. Second refresh: 18 messages. You just went back in time. This happens when two sequential reads hit followers with different amounts of lag.
 
-**Monotonic reads** guarantees that if you read a value at time T, you'll never read an older value at time T+1. The practical fix: route each user's reads to the same replica consistently, using a hash on the user ID.
+> **Monotonic Reads Invariant**
+>
+> **If `read(T) = v`, then for any later `T' > T`, `read(T') ≥ v`.**
+>
+> Once you have seen a value, you will never see an older one. The practical fix: route each user's reads to the same replica consistently, using a hash on the user ID.
+{: .prompt-info }
 
 ### Problem 3: Consistent prefix reads
 
@@ -207,9 +212,12 @@ Say you have **N** total replica nodes. You require:
 - **W** nodes to acknowledge a write before it's considered successful
 - **R** nodes to respond to a read, taking the most recent value
 
-**The rule: W + R > N**
-
-Because if W + R > N, the set of nodes that confirmed the write and the set of nodes read from **must overlap by at least one node**. That overlapping node has the latest write. You're guaranteed to see it.
+> **The Quorum Rule**
+>
+> **`W + R > N`**
+>
+> If the write quorum (`W`) plus the read quorum (`R`) exceeds the total replicas (`N`), the two sets **must overlap by at least one node**. That overlapping node holds the latest write — so every read is guaranteed to see it.
+{: .prompt-tip }
 
 ![Quorum overlap with W + R > N](/assets/img/07-quorum.png)
 _Fig 7 — When W + R > N, the write and read quorums must overlap by at least one node — guaranteeing the latest value is read._
@@ -251,7 +259,14 @@ To implement this, each operation carries a **version vector** — a compact rec
 
 ### The CAP theorem — and why it's slightly misunderstood
 
-You can't have all three of: **C**onsistency, **A**vailability, and **P**artition tolerance. Network partitions aren't optional — they happen. So you're really choosing between:
+> **CAP Theorem**
+>
+> **`Consistency  +  Availability  +  Partition tolerance  →  pick any 2`**
+>
+> Network partitions aren't optional — they happen. So in practice you're really choosing between **CP** (consistency) and **AP** (availability) whenever the network splits.
+{: .prompt-warning }
+
+So you're really choosing between:
 
 - **CP** — When the network splits, reject requests that can't reach a quorum. Your system goes partially unavailable, but no stale data is served. (HBase, etcd, Zookeeper)
 - **AP** — When the network splits, serve potentially stale data. Your system stays up, but some reads might return old values. (Cassandra, CouchDB, Riak)
