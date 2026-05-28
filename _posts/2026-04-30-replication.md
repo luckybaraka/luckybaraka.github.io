@@ -5,8 +5,6 @@ categories: [Distributed Systems, Backend Engineering]
 tags: [replication, databases, distributed-systems, consistency, backend, system-design]
 ---
 
-# Replication — The Art of Making Data Survive Everything
-
 From 1970s mainframe tape backups to modern globally distributed databases — a complete guide to why copying data is the hardest easy thing in computing.
 
 ---
