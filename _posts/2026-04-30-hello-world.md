@@ -11,11 +11,11 @@ From 1970s mainframe tape backups to modern globally distributed databases — a
 
 ---
 
-## Why Bother Copying the Same Data Twice?
+## Why Bother Copying the Same Data Twice Anyway?
 
 Here's a question worth sitting with: if your database is running fine right now, on your server, producing correct results — why would you want to maintain a second copy of all that data somewhere else?
 
-The answer is almost embarrassingly simple: **machines break**. Networks get cut. Data centers flood. Someone trips over a power cable. A software bug corrupts half your tables at 3 a.m. The world is relentlessly hostile to data at rest.
+The answer is almost embarrassingly simple: **machines break**. Networks get cut. You never trust the networks. Data centers flood. Someone trips over a power cable. A software bug corrupts half your tables at 3 a.m. The world is relentlessly hostile to data at rest.
 
 But it goes beyond survival. There are three genuinely different reasons you might want multiple copies of data, and they have almost nothing to do with each other:
 
@@ -56,11 +56,8 @@ What's striking about this history is that the hard problems haven't gone away �
 
 Start simple. One node is the **leader** (also called primary or master). All writes go there. The leader writes them to its local storage and simultaneously sends the change to its **followers** (also called replicas, standbys, or secondaries). Reads can go to either the leader or any follower.
 
-```
-Client  ──WRITE──▶  [ LEADER ]  ──replicate──▶  [ Follower 1 ]  ──▶  Read clients
-                                ──replicate──▶  [ Follower 2 ]  ──▶  Read clients
-                                ──replicate──▶  [ Follower 3 ]  ──▶  Read clients
-```
+![Single-leader replication](/assets/img/01-single-leader.png)
+_Fig 1 — Single-leader replication: all writes funnel through one node, reads distributed across followers._
 
 This is how PostgreSQL streaming replication works. It's how MySQL binlog replication works. It's how MongoDB replica sets elect a primary. It's how Redis Sentinel manages failover. It's the default mental model for most engineers, and for good reason — it's simple and it works.
 
@@ -69,7 +66,7 @@ This is how PostgreSQL streaming replication works. It's how MySQL binlog replic
 Data doesn't teleport. The leader has to package up what changed and send it over the wire. There are several approaches:
 
 **Statement-Based Replication**
-The leader logs every SQL statement — `INSERT INTO orders VALUES (...)` — and sends those statements to followers, which execute them. MySQL used this by default before version 5.1. The problem: non-deterministic functions. `NOW()`, `RAND()`, triggers with side effects — all of these might produce different results on different machines. Call `NOW()` one millisecond apart and you have a data divergence.
+The leader logs every SQL statement — `INSERT INTO orders VALUES (...)` — and sends those statements to followers, which execute them. MySQL used this by default before version 5.1. The problem is that we can have issues with non-deterministic functions. `NOW()`, `RAND()`, triggers with side effects — all of these might produce different results on different machines. Call `NOW()` one millisecond apart and you have a data divergence.
 
 **Write-Ahead Log (WAL) Shipping**
 PostgreSQL does this. The database writes every change to a WAL file first — a binary append-only log of every byte changed on disk. That log gets streamed to followers, which replay the exact same byte-level changes. No ambiguity, no non-determinism. The catch: the log is tightly coupled to the storage engine version. You can't do zero-downtime upgrades by running a new-version follower while the leader is on the old version — the WAL format might be incompatible.
@@ -99,17 +96,8 @@ Here's where things get genuinely weird, and where most distributed systems bugs
 
 Asynchronous replication means the leader confirms a write to the client **before** the followers have actually applied it. The write is in the leader's log, it's being sent — but at the exact moment of confirmation, followers are maybe 50 milliseconds behind. Under load, or with a slow network, they might be seconds or minutes behind. This gap is called **replication lag**, and it produces some memorably confusing behavior.
 
-```
-Timeline ──────────────────────────────────────────────▶
-
-Leader:   [ Write confirmed to client ✓ ]
-                    |
-                    ▼
-Follower A:              ← 50–200ms later → [ Write applied ✓ ]
-
-If a user reads from Follower A in this gap:
-  They get STALE data — their own write has "disappeared"
-```
+![Replication lag timeline](/assets/img/02-replication-lag.png)
+_Fig 2 — Replication lag: the leader confirms a write before followers apply it. A read landing in that gap returns stale data._
 
 ### Problem 1: Reading your own writes
 
@@ -142,21 +130,13 @@ Suppose you're reading a conversation and the answer arrives before the question
 
 Every replication system forces you to take a position on one of the deepest trade-offs in distributed computing: *how much durability are you willing to pay for?*
 
+![Synchronous vs asynchronous replication](/assets/img/03-sync-vs-async.png)
+_Fig 3 — Synchronous vs. asynchronous replication: the leader either waits for a follower ACK before confirming, or confirms immediately and replicates in the background._
+
 **Synchronous replication:**
-```
-Client ──write──▶ Leader ──replicate──▶ Follower
-                    ▲                       |
-                    └──────── ACK ──────────┘
-       ← Only confirms to client after follower ACKs →
-```
 The leader waits for at least one follower to confirm before telling the client "done." Guaranteed no data loss if the leader dies. Cost: you're only as fast as your slowest synchronous follower. If that follower is unreachable, every write blocks.
 
 **Asynchronous replication:**
-```
-Client ──write──▶ Leader ──confirmed ✓──▶ Client immediately
-                    |
-                    └──(async)──▶ Follower (catching up...)
-```
 Fast, non-blocking. But if the leader dies before the followers receive the write — that write is gone. Not buffered, not recoverable.
 
 **Semi-synchronous (the practical middle ground):**
@@ -172,15 +152,8 @@ Single-leader has a critical weakness: **every write must go through one specifi
 
 The solution: let each datacenter have its own leader. Writes in Tokyo go to the Tokyo leader. Each leader replicates to the others asynchronously. The catch comes when two datacenters modify the same data at the same time.
 
-```
-┌─── Datacenter US-East ──────┐     ┌─── Datacenter EU-West ──────┐
-│  [ Leader A ]               │     │               [ Leader B ]  │
-│  [ Follower ] [ Follower ]  │◀───▶│  [ Follower ] [ Follower ]  │
-└─────────────────────────────┘     └─────────────────────────────┘
-         async replication (both directions)
-
-  ⚠ If both leaders update the same row at the same time → CONFLICT
-```
+![Multi-leader replication across datacenters](/assets/img/04-multi-leader.png)
+_Fig 4 — Multi-leader replication: each datacenter has its own leader. Async cross-replication means concurrent writes to the same row can conflict._
 
 ### Write conflicts — the dark heart of multi-leader
 
@@ -190,15 +163,18 @@ Two users in different datacenters both edit the title of the same Wikipedia art
 
 | Strategy | How it works | Trade-off |
 |---|---|---|
-| **Last Write Wins (LWW)** | Higher timestamp wins; the other write is discarded | ❌ Lossy — valid data silently deleted. Cassandra's default. |
-| **Replica ID priority** | Higher-numbered replica always wins on conflict | ❌ Lossy — arbitrary, no relationship to intent |
-| **Merge values** | Concatenate both: "B/The Dark Knight (2008)" | ⚠️ Works for sets/counters; produces nonsense for others |
-| **Preserve all, resolve on read** | Keep all conflicting versions; resolve in application code | ✅ No data loss. Amazon's shopping cart used this. |
-| **CRDTs** | Design data structures that merge mathematically | ✅ Automatic, loss-free. Only works for CRDT-compatible types. |
+| **Last Write Wins (LWW)** | Higher timestamp wins; the other write is discarded |  Lossy — valid data silently deleted. Cassandra's default. |
+| **Replica ID priority** | Higher-numbered replica always wins on conflict |  Lossy — arbitrary, no relationship to intent |
+| **Merge values** | Concatenate both: "B/The Dark Knight (2008)" |  Works for sets/counters; produces nonsense for others |
+| **Preserve all, resolve on read** | Keep all conflicting versions; resolve in application code |  No data loss. Amazon's shopping cart used this. |
+| **CRDTs** | Design data structures that merge mathematically |  Automatic, loss-free. Only works for CRDT-compatible types. |
 
 > **Operational tip:** The best way to handle multi-leader conflicts is to avoid them. Route all writes for a particular record to the same datacenter — use the user's home region as the routing key. Most applications can live with this and never deal with conflicts at all.
 
 ### Multi-leader topologies
+
+![Multi-leader replication topologies](/assets/img/05-topologies.png)
+_Fig 5 — Three multi-leader topologies. All-to-all is most resilient but requires version vectors for causal ordering._
 
 - **Circular** — each node replicates to the next. One broken node breaks the entire ring.
 - **Star (central hub)** — all nodes replicate through one central node. Hub failure = total outage.
@@ -212,13 +188,8 @@ In the late 2000s, Amazon's engineers needed a shopping cart service that could 
 
 In leaderless replication, every node is a peer. Clients send writes to multiple replicas in parallel. Clients send reads to multiple replicas in parallel and pick the most recent value. There's no primary or master. Dynamo pioneered this. Cassandra, Riak, and Voldemort followed.
 
-```
-Client ──write──▶ Node 1 [ ACK ✓ ]
-       ──write──▶ Node 2 [ ACK ✓ ]  ← 2 of 3 ACKs = success
-       ──write──▶ Node 3 [ OFFLINE ✗ ]
-
-Node 3 comes back online → read repair / anti-entropy catches it up
-```
+![Leaderless replication](/assets/img/06-leaderless.png)
+_Fig 6 — Leaderless replication: clients write to multiple nodes in parallel. A quorum of ACKs is success; lagging nodes catch up via read repair or anti-entropy._
 
 ### Catching up: read repair and anti-entropy
 
@@ -240,14 +211,8 @@ Say you have **N** total replica nodes. You require:
 
 Because if W + R > N, the set of nodes that confirmed the write and the set of nodes read from **must overlap by at least one node**. That overlapping node has the latest write. You're guaranteed to see it.
 
-```
-N = 5 replicas,  W = 3,  R = 3  →  W + R = 6 > 5  ✓
-
-Write quorum:  [ N1 ✓ ] [ N2 ✓ ] [ N3 ✓ ] [ N4   ] [ N5   ]
-Read quorum:             [ N2 ✓ ] [ N3 ✓ ] [ N4 ✓ ]
-
-Overlap on N2 and N3 → latest value is guaranteed to be found
-```
+![Quorum overlap with W + R > N](/assets/img/07-quorum.png)
+_Fig 7 — When W + R > N, the write and read quorums must overlap by at least one node — guaranteeing the latest value is read._
 
 **Common configurations with N=3:**
 
@@ -269,25 +234,8 @@ What if a network partition means you can't reach enough of your designated N no
 
 "Consistency" means different things in different contexts. Here's the hierarchy, from strongest to weakest:
 
-```
-┌─────────────────────────────────────────────────┐
-│            LINEARIZABILITY  (strongest)          │
-│  System appears single-copy, real-time           │
-├─────────────────────────────────────────────────┤
-│         SEQUENTIAL CONSISTENCY                   │
-│  Ops appear in some order consistent per process │
-├─────────────────────────────────────────────────┤
-│           CAUSAL CONSISTENCY                     │
-│  Causally related ops seen in correct order      │
-├─────────────────────────────────────────────────┤
-│     READ-YOUR-WRITES / MONOTONIC READS           │
-│  Session-level guarantees only                   │
-├─────────────────────────────────────────────────┤
-│          EVENTUAL CONSISTENCY  (weakest)         │
-│  All nodes converge eventually, nothing more     │
-└─────────────────────────────────────────────────┘
-  ↑ Higher cost & complexity    ↑ More available & scalable
-```
+![The consistency guarantee ladder](/assets/img/08-consistency-ladder.png)
+_Fig 8 — The consistency ladder, from linearizability at the top to eventual consistency at the bottom. Stronger guarantees cost more; weaker ones scale further._
 
 ### Linearizability — the gold standard
 
@@ -322,23 +270,8 @@ Neither choice is wrong. It depends entirely on what your application tolerates:
 
 ### Decision framework
 
-```
-New replication need
-        │
-        ▼
-Multi-datacenter writes?
-   │                   │
-  No                  Yes
-   │                   │
-   ▼                   ▼
-Single-Leader    Conflicts tolerable?
-                    │           │
-                   Yes          No
-                    │           │
-                    ▼           ▼
-              Multi-Leader   Leaderless
-                           (Cassandra, Riak)
-```
+![Replication decision framework](/assets/img/09-decision-framework.png)
+_Fig 9 — Decision framework: start from your write geography and conflict tolerance, and the right replication model usually picks itself._
 
 ### Five things that will bite you in production
 
