@@ -318,4 +318,12 @@ The more you understand the mechanisms — why a follower can lag, why W + R > N
 
 ---
 
+## Further reading — from a friend
+
+If you enjoyed thinking about replication, you'll love the sibling problem: **caching**. My friend and fellow techie **Bala** wrote a wonderful piece called [*Caching Will Humble You*](https://balagrivine.github.io/posts/caching-will-humble-you/) — go read it. Bala is one of the sharpest engineers I know, a genuine contributor to the technology community, and the kind of friend whose writing makes you a better engineer just by reading it. Replication and caching are two sides of the same coin (both are about keeping copies of data and surviving the consequences), so his post pairs perfectly with this one.
+
+Seriously — go read [Bala's blog](https://balagrivine.github.io/). You'll thank me later.
+
+---
+
 *Thanks for reading. If this helped you think more clearly about how data stays alive across machines, that's the whole point.*
