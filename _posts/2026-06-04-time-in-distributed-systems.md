@@ -5,7 +5,7 @@ categories: [distributed-systems, theory]
 tags: [distributed-systems, clocks, lamport, vector-clocks, ntp, spanner, causality]
 ---
 
-# Time in Distributed Systems
+
 # From Physics to Distributed Algorithms
 
 From the oscillation of atoms and crystals, through the chaos of networked machines, to the elegant mathematics of logical clocks — a ground-up journey through one of the hardest problems in computer science.
