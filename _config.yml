@@ -112,9 +112,12 @@ kramdown:
 sass:
   style: compressed
 
-compress_html:
-  clippings: all
-  comments: all
+# compress_html disabled: it was stripping <pre> tags and collapsing
+# code-block whitespace, making Python/code blocks render unreadably
+# on one line. Re-enable cautiously if needed.
+# compress_html:
+#   clippings: all
+#   comments: all
 
 
 jekyll-archives:
