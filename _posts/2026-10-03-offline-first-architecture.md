@@ -81,6 +81,8 @@ Operational Transformation takes a different approach. Instead of simply choosin
 CRDTs are specially designed data structures that allow different replicas to be modified independently and then merged in a way that allows them to eventually converge to the same state. The key idea is **convergence**.Different devices may temporarily have different versions of the data, but after their changes are exchanged and merged, the replicas should eventually arrive at the same state. CRDTs are particularly useful for applications that need offline operation and collaborative editing. Technologies such as Automerge and Yjs are examples of systems based on CRDT concepts.
 
 Together, these four layers form the basic architecture of an offline-first system:
+![Offline-first layers](/assets/img/offline-architecture/fig1-offline.png)
+_Fig 1 - Offline-first architecture layers: This shows all the 4 offline-first layers._
 
 ```text
 ┌───────────────────────────────┐
