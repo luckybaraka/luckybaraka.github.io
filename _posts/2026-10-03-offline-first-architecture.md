@@ -84,4 +84,4 @@ Together, these four layers form the basic architecture of an offline-first syst
 ![Offline-first layers](/assets/img/offline-architecture/fig1-offline.png)
 _Fig 1 - Offline-first architecture layers: This shows all the 4 offline-first layers._
 
-
+The four layers are organized from the bottom to the top of the client device to start with the local storage layer, then the interoperation layer, the conflict resolution layer, and the topmost layer, which is the conflict resolution module. Layer 1 is used for all read and write operations, without any involvement of the network. Layer 2 has a continuous record of all changes. Layer 3 monitors connectivity and syncs. Layer 4 kicks in when two devices filed a dispute over the same data. The bi-directional arrows between layers indicate that data can be passed either up or down; change of state is passed upwards from storage, while resolved states are passed downwards to storage.
