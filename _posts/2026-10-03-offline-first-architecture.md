@@ -21,14 +21,14 @@ This changes the way we think about the network. Instead of making the network a
 
 From here, we can break offline-first architecture into several areas:
 
- 1. Local data storage — How is data stored on the device? What technologies or databases are used, such as IndexedDB, SQLite, or other local stores, and why?
- 2. Change tracking — How does the application know which data has been created, updated, or deleted while offline?
- 3. Operation queuing — How are changes stored and queued until they can be sent to the server?
- 4. Synchronization — How are local changes synchronized with the remote server once connectivity is restored?
- 5. Conflict resolution — What happens when two devices modify the same piece of data while disconnected?
- 6. Consistency — How does the system ensure that the local and remote copies of the data eventually become consistent?
- 7. Failure handling — What happens when synchronization itself fails, a request is duplicated, or the connection is lost during synchronization?
+ 1. Local data storage - How is data stored on the device? What technologies or databases are used, such as IndexedDB, SQLite, or other local stores, and why?
+ 2. Change tracking - How does the application know which data has been created, updated, or deleted while offline?
+ 3. Operation queuing - How are changes stored and queued until they can be sent to the server?
+ 4. Synchronization - How are local changes synchronized with the remote server once connectivity is restored?
+ 5. Conflict resolution - What happens when two devices modify the same piece of data while disconnected?
+ 6. Consistency - How does the system ensure that the local and remote copies of the data eventually become consistent?
+ 7. Failure handling - What happens when synchronization itself fails, a request is duplicated, or the connection is lost during synchronization?
 
-The interesting part of offline-first architecture is therefore not simply storing data locally. The deeper problem is how distributed copies of data can remain reliable and eventually consistent when devices can operate independently and connectivity is unreliable.
+
 
 
