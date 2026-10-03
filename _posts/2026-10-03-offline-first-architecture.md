@@ -67,7 +67,7 @@ The important thing is that synchronization happens in the background. The user 
 
 ### 4. Conflict Resolution Layer
 This is where things become more interesting. Because each device can continue working independently while offline, two devices can modify the same piece of data without knowing about each other's changes. When both devices reconnect, the system now has two different changes to the same piece of data. The conflict resolution layer determines how these changes should be handled and how the system eventually gets all replicas back to a consistent state. There are different approaches to conflict resolution. Three commonly discussed approaches are 
- - **Last-Write-Wins (LWW)
+ - **Last-Write-Wins (LWW)**
  - **Operational Transformation (OT)**
  - **Conflict-Free Replicated Data Types (CRDTs).**
 
