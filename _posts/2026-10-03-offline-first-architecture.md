@@ -60,7 +60,7 @@ The synchronization engine is responsible for moving data between the local devi
 2. Send those changes to the server.
 3. Fetch changes that were made on the server or by other devices.
 4. Apply those changes to the local database.
-5. Handle any conflicts that occur during synchronization.
+5. Detect situations where local and remote changes conflict and pass them to the conflict resolution mechanism.
 
 The important thing is that synchronization happens in the background. The user should not have to wait for the network before continuing to use the application.
 
