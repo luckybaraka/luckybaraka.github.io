@@ -84,16 +84,4 @@ Together, these four layers form the basic architecture of an offline-first syst
 ![Offline-first layers](/assets/img/offline-architecture/fig1-offline.png)
 _Fig 1 - Offline-first architecture layers: This shows all the 4 offline-first layers._
 
-```text
-┌───────────────────────────────┐
-│     Conflict Resolution       │
-├───────────────────────────────┤
-│     Synchronization Engine    │
-├───────────────────────────────┤
-│ Change Tracking & Queue       │
-├───────────────────────────────┤
-│       Local Storage           │
-└───────────────────────────────┘
-```
-
 
