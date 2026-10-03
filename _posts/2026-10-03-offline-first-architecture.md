@@ -66,7 +66,10 @@ The important thing is that synchronization happens in the background. The user 
 
 
 ### 4. Conflict Resolution Layer
-This is where things become more interesting. Because each device can continue working independently while offline, two devices can modify the same piece of data without knowing about each other's changes. When both devices reconnect, the system now has two different changes to the same piece of data. The conflict resolution layer determines how these changes should be handled and how the system eventually gets all replicas back to a consistent state. There are different approaches to conflict resolution. Three commonly discussed approaches are **Last-Write-Wins (LWW), Operational Transformation (OT), and Conflict-Free Replicated Data Types (CRDTs).**
+This is where things become more interesting. Because each device can continue working independently while offline, two devices can modify the same piece of data without knowing about each other's changes. When both devices reconnect, the system now has two different changes to the same piece of data. The conflict resolution layer determines how these changes should be handled and how the system eventually gets all replicas back to a consistent state. There are different approaches to conflict resolution. Three commonly discussed approaches are 
+ - **Last-Write-Wins (LWW)
+ - **Operational Transformation (OT)**
+ - **Conflict-Free Replicated Data Types (CRDTs).**
 
 #### Last-Write-Wins (LWW)
 Last-Write-Wins is the simplest approach. Each change has a timestamp, and when two changes conflict, the system accepts the change that happened last. This approach is simple, but the earlier change is discarded. This can result in data being lost when the earlier change was also important.
@@ -75,9 +78,8 @@ Last-Write-Wins is the simplest approach. Each change has a timestamp, and when 
 Operational Transformation takes a different approach. Instead of simply choosing one change as the winner, it attempts to transform concurrent operations so that they can be applied together while maintaining a consistent result. This approach is particularly associated with collaborative editing, where multiple users can modify the same document at the same time. Rather than simply asking which operation should win, OT attempts to adjust the operations so that the changes can coexist.
 
 #### Conflict-Free Replicated Data Types (CRDTs)
-CRDTs are specially designed data structures that allow different replicas to be modified independently and then merged in a way that allows them to eventually converge to the same state. The key idea is **convergence**.
+CRDTs are specially designed data structures that allow different replicas to be modified independently and then merged in a way that allows them to eventually converge to the same state. The key idea is **convergence**.Different devices may temporarily have different versions of the data, but after their changes are exchanged and merged, the replicas should eventually arrive at the same state. CRDTs are particularly useful for applications that need offline operation and collaborative editing. Technologies such as Automerge and Yjs are examples of systems based on CRDT concepts.
 
-Different devices may temporarily have different versions of the data, but after their changes are exchanged and merged, the replicas should eventually arrive at the same state. CRDTs are particularly useful for applications that need offline operation and collaborative editing. Technologies such as Automerge and Yjs are examples of systems based on CRDT concepts.
 Together, these four layers form the basic architecture of an offline-first system:
 
 ```text
