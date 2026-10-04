@@ -119,28 +119,23 @@ The same process can happen on other devices, allowing the different copies of t
 Synchronization becomes more complicated when two devices have changed the same data while they were offline.
 Imagine that both devices started with:
 
-`
-Status = ACTIVE
-`
+
+`Status = ACTIVE`
 
 Device A changes it to:
 
-`
-INACTIVE
-`
+`INACTIVE`
+
 while Device B changes it to:
 
-`
-SUSPENDED
-`
+
+`SUSPENDED`
 
 Neither device knew about the other's change because they were offline. When they eventually synchronize, the server or synchronization system discovers that the changes cannot simply be applied independently without deciding how the conflict should be handled. This is where the conflict-resolution strategy comes in. With **Last-Write-Wins (LWW)**, the system can compare the changes and accept the one considered to be the latest. With **Operational Transformation (OT)**, concurrent operations are transformed so that they can be applied together in a consistent way. With **Conflict-Free Replicated Data Types (CRDTs)**, the data structures and their merge rules are designed so that independently made changes can be combined and the replicas can eventually converge to the same state. The important thing is that conflict resolution is not simply about choosing a winner in every situation. The appropriate strategy depends on the type of data and what the application considers to be a correct result. After the conflict has been resolved, the resulting state can be synchronized back to the other devices so that they eventually converge on the same data.
 
 ### 6. Service Workers on the Web
 For web applications, there is another important mechanism that can participate in offline-first behavior: **Service Workers**.
 A Service Worker is a script that runs separately from the main web page and can intercept network requests made by the application. This gives the application a place to implement offline behavior, such as serving cached resources or handling requests when the network is unavailable. For example, if a web application needs to communicate with a server but the browser currently has no connection, the Service Worker can participate in the offline strategy instead of allowing the request to simply fail. The browser also provides mechanisms such as Background Sync that can allow work to be retried when connectivity becomes available again, although support and behavior depend on the browser and platform. It is therefore useful to think of the Service Worker as part of the infrastructure that helps a web application operate offline. It is **not itself the entire offline-first architecture or automatically a complete operation queue**. The application still needs to decide how data is stored, how changes are recorded, how synchronization works, and how conflicts are resolved.
-
----
 
 ### Putting It All Together
 
