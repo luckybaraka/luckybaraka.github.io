@@ -101,18 +101,7 @@ The four layers describe the structure of an offline-first system, but it is use
 When a user performs an action, the application does not first ask the server for permission to update the screen. Instead, the change is written to the local database first, and the user interface is updated from that local state. For example, imagine a user changing the status of a record from `ACTIVE` to `INACTIVE`. The application saves that change locally and immediately shows `INACTIVE` on the screen. This happens whether the device is connected to a fast Wi-Fi network or has no connection at all. From the user's perspective, the application behaves the same way because the network is not required for the immediate interaction. The important idea here is that the user is interacting with the **local copy of the data**, not waiting for the remote server to respond.
 
 ### 2. Operation Logging
-Writing the change to the local database is only part of the process. The application also needs to remember that this change still needs to reach the server. For this reason, the operation is recorded in a persistent queue. The queue can contain information such as the operation's unique ID, the type of operation, the record that was changed, the new value, the timestamp, and the device that made the change. For example, the application might record something conceptually like:
-
----
-Operation ID: 8f21...
-Operation: UPDATE
-Record: 123
-New value: INACTIVE
-Timestamp: 10:35:42
-Device: Device-A
----
-
-The important part is that the queue is persisted rather than kept only in memory. If the application crashes, the device restarts, or the user closes the application while offline, the pending operation should still be there when the application starts again. The application therefore does not have to remember only the current state, it also remembers **what needs to be synchronized**.
+Writing the change to the local database is only part of the process. The application also needs to remember that this change still needs to reach the server. For this reason, the operation is recorded in a persistent queue. The queue can contain information such as the operation's unique ID, the type of operation, the record that was changed, the new value, the timestamp, and the device that made the change. The important part is that the queue is persisted rather than kept only in memory. If the application crashes, the device restarts, or the user closes the application while offline, the pending operation should still be there when the application starts again. The application therefore does not have to remember only the current state, it also remembers **what needs to be synchronized**.
 
 ### 3. Connectivity Monitoring
 The synchronization engine needs to know when it can communicate with the server. While the device is offline, the application does not stop working. New changes continue to be written locally and added to the pending operation queue. When connectivity becomes available again, the synchronization engine can begin processing those pending operations. The important point is that connectivity is treated as something that can change at any time. The application therefore needs to be able to move between an offline state and an online state without interrupting the user's work. The exact mechanism used to detect connectivity depends on the platform. Mobile applications can use platform-specific network APIs(IoS has its own ways and Android also have its own way of detecting that the network is restored), while web applications have browser APIs that can provide information about network connectivity.
@@ -130,21 +119,20 @@ The same process can happen on other devices, allowing the different copies of t
 Synchronization becomes more complicated when two devices have changed the same data while they were offline.
 Imagine that both devices started with:
 
-```text
+`
 Status = ACTIVE
-```
+`
 
 Device A changes it to:
 
-```text
+`
 INACTIVE
-```
-
+`
 while Device B changes it to:
 
-```text
+`
 SUSPENDED
-```
+`
 
 Neither device knew about the other's change because they were offline. When they eventually synchronize, the server or synchronization system discovers that the changes cannot simply be applied independently without deciding how the conflict should be handled. This is where the conflict-resolution strategy comes in. With **Last-Write-Wins (LWW)**, the system can compare the changes and accept the one considered to be the latest. With **Operational Transformation (OT)**, concurrent operations are transformed so that they can be applied together in a consistent way. With **Conflict-Free Replicated Data Types (CRDTs)**, the data structures and their merge rules are designed so that independently made changes can be combined and the replicas can eventually converge to the same state. The important thing is that conflict resolution is not simply about choosing a winner in every situation. The appropriate strategy depends on the type of data and what the application considers to be a correct result. After the conflict has been resolved, the resulting state can be synchronized back to the other devices so that they eventually converge on the same data.
 
@@ -158,6 +146,5 @@ A Service Worker is a script that runs separately from the main web page and can
 
 The complete process can therefore be understood as a continuous cycle:
 **User action → local write → operation recorded → application continues working → connectivity returns → synchronization → conflict resolution when necessary → local state updated.**
-
 The important idea behind all of this is that **the network is no longer in the critical path of every user interaction**. The application can continue working locally and treat synchronization with the server as an ongoing background process. That is what makes an offline-first application different from an application that simply happens to have some offline functionality.
 
