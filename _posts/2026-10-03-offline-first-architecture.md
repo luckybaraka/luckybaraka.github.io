@@ -1,8 +1,9 @@
-
-
-
-
-
+---
+title: "Offline-First Systems"
+date: 2026-10-03 00:00:00 +0000
+categories: [Distributed Systems, Backend Engineering]
+tags: [offline-first, synchronization, distributed-systems, consistency, conflict-resolution, backend, system-design]
+---
 
 ### I. Offline-first Architecture
 Offline-first architecture is an approach to application development where an application is designed to remain functional even when the device has no or unreliable internet connnectivity. Data is stored locally on the device, allowing the user to contniue working without depending on a constant connection to a remote server. When connectivity is unavailable, the application stores new or modified data locally. Once the connection is restored, the application synchronizes the local changes with the server in the background and the user does not feel any of the effect. The synchronization process ensures that the local and remote data eventually become consistent while allowing the user to continue using the application regardless of network availability.  
