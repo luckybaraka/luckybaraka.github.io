@@ -198,7 +198,7 @@ This creates a history of what happened to the data as it moved between the devi
 <div style="text-align: center;">
   <img src="/assets/img/offline-architecture/resolution-sync.png"
        alt="Offline-first architecture showing synchronization"
-       style="width: 6cm; height: 5cm;">
+       style="width: 50%; height: 50%;">
 </div>
 _Fig 1 - Offline-first architecture: This shows sync data._
 
