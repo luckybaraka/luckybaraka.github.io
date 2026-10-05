@@ -195,10 +195,10 @@ The final element is a synchronization history or audit log. This becomes partic
 
 This creates a history of what happened to the data as it moved between the device and the server. For example, if a user notices that a record contains unexpected information, an administrator or support engineer can investigate the synchronization history instead of simply asking,*"What happened?"*. They can trace the sequence of events and determine whether the record was changed locally, synchronized to the server, modified by another device, or affected by a conflict-resolution rule. This is especially valuable in enterprise systems because synchronization is no longer just a background technical process. It becomes part of the system's data history.
 
-<div style="text-align: center;">
+<div style="display: flex; justify-content: center; width: 100%;">
   <img src="/assets/img/offline-architecture/resolution-sync.png"
        alt="Offline-first architecture showing synchronization"
-       style="width: 30%; height: 40%;">
+       style="width: 30%; height: auto;">
 </div>
 _Fig 1 - Offline-first architecture: This shows sync data._
 
