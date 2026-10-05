@@ -94,7 +94,7 @@ The four layers can be viewed from the bottom up, starting with the **Local Stor
 The interaction between these layers allows data to move through the system in both directions - that means it is bi-directional. Local changes originate in the storage layer and move through change tracking and synchronization toward the server. Changes received from the server can move back through the synchronization process and eventually be applied to the local store, while conflicting changes are handled by the conflict resolution layer before the final state is persisted.(The bi-directional arrows between layers indicate that data can be passed either up or down; change of state is passed upwards from storage, while resolved states are passed downwards to storage.)
 
 
-## IV The System Working (How an offline-First System Works)
+## IV. The System Working (How an offline-First System Works)
 The four layers describe the structure of an offline-first system, but it is useful to see what actually happens when a user interacts with the application. The easiest way to understand this is to follow a single user action. The user performs an action, the application responds immediately, the change is recorded locally, and the synchronization process takes care of communicating with the server when a connection is available.
 
 ### 1. Local Write and Immediate UI Response
@@ -137,9 +137,68 @@ Neither device knew about the other's change because they were offline. When the
 For web applications, there is another important mechanism that can participate in offline-first behavior: **Service Workers**.
 A Service Worker is a script that runs separately from the main web page and can intercept network requests made by the application. This gives the application a place to implement offline behavior, such as serving cached resources or handling requests when the network is unavailable. For example, if a web application needs to communicate with a server but the browser currently has no connection, the Service Worker can participate in the offline strategy instead of allowing the request to simply fail. The browser also provides mechanisms such as Background Sync that can allow work to be retried when connectivity becomes available again, although support and behavior depend on the browser and platform. It is therefore useful to think of the Service Worker as part of the infrastructure that helps a web application operate offline. It is **not itself the entire offline-first architecture or automatically a complete operation queue**. The application still needs to decide how data is stored, how changes are recorded, how synchronization works, and how conflicts are resolved.
 
-### Putting It All Together
+## V. System Screens
+So far, we have looked at what happens behind the scenes when an offline-first application is being used: data is written locally, changes are placed in an operation queue, synchronization happens when connectivity is available, and conflicts may need to be resolved.
+But there is another important part of the design that is easy to overlook: **the user interface needs to communicate what is happening.** In a traditional application, a user can often assume that clicking a button means the server has received and saved the change. In an offline-first application, that assumption is no longer always true. A change may have been saved successfully on the device while still waiting to be synchronized with the server. The UI therefore needs to give the user enough information to understand the current state of their data without exposing all of the complexity of the synchronization system.
 
-The complete process can therefore be understood as a continuous cycle:
-**User action → local write → operation recorded → application continues working → connectivity returns → synchronization → conflict resolution when necessary → local state updated.**
-The important idea behind all of this is that **the network is no longer in the critical path of every user interaction**. The application can continue working locally and treat synchronization with the server as an ongoing background process. That is what makes an offline-first application different from an application that simply happens to have some offline functionality.
+### 1. Online and Offline Status
+The first thing an offline-first application should communicate is whether the device currently has a connection that can be used for synchronization. This does not necessarily need to be a large message saying *"You are offline."* A small indicator in the application header can be enough. For example, when the device loses connectivity, the application could indicate that changes are being stored locally. When connectivity returns, the indicator can change to show that synchronization is taking place. The important thing is that the user should not be left wondering, `"Did my change actually save?"`
+If the user edits a record while offline, the application should make it clear that the change has been saved locally even though it has not yet reached the server. This gives the user confidence that being offline does not mean their work has been lost.
+
+![Offline-first layers](/assets/img/offline-architecture/offline-online.png)
+_Fig 1 - Offline-first architecture: This shows if the status is offline or online._
+
+### 2. Local-First Data View
+The second important part of the interface is how data is loaded. In a traditional application, navigating to a screen might trigger a request to the server (the remote server). An offline-first application takes a different approach. The application can read the data from its local database first. This means that when the user opens a screen, the application does not necessarily need to wait for a network request before displaying the data. It can immediately show the latest version that exists locally.
+
+That local version may contain two things:
+* data that was previously synchronized from the server, and
+* changes that the user has made locally but have not yet been synchronized.
+
+For example, suppose the server says that a patient's status is `ACTIVE`. The user changes it to `INACTIVE` while offline. The local database now contains `INACTIVE`, even though the server still contains `ACTIVE`. If the user navigates away and comes back to that record, the application should show `INACTIVE` because that is the latest state known to the device. This is one of the major advantages of local-first design. The application does not have to make a network request every time the user navigates between screens. The network becomes important for synchronization rather than for every interaction.
+
+![Offline-first layers](/assets/img/offline-architecture/local-data-view.png)
+_Fig 1 - Offline-first architecture: This shows the local data view._
+
+### 3. Pending Changes Queue
+Behind the interface, the application may have an operation queue containing changes that have not yet reached the server. These operations can remain in the local queue until synchronization becomes possible. For the normal user, the application does not necessarily need to expose all of these operations. However, having visibility into the queue is extremely useful for administrators, developers, and support teams.
+
+For example, the system could show information such as:
+* how many operations are currently pending,
+* what types of operations are waiting,
+* how long the oldest operation has been waiting, and
+* whether the queue is successfully being processed.
+
+This becomes particularly useful when monitoring an offline-first system in production. Imagine that the queue normally contains a few pending operations and then suddenly grows to thousands. At the same time, no operations are successfully leaving the queue. That could indicate that something is wrong with the synchronization engine, the network connection, or the server receiving the changes. The queue therefore becomes more than just a mechanism for synchronization. It also becomes an important source of operational visibility.
+
+![Offline-first layers](/assets/img/offline-architecture/pending-changes.png)
+_Fig 1 - Offline-first architecture: This shows pending changes._
+
+### 4. Conflict Resolution Notification
+Conflicts are another situation that the interface needs to communicate carefully. Suppose two devices were working with the same record while offline. Both devices make different changes, and later they reconnect. The synchronization system may determine that the changes conflict and apply a conflict-resolution strategy such as Last-Write-Wins. From the system's perspective, the conflict may already be resolved. But from the user's perspective, something important may have happened to their data. For example, the application might display a small notification:
+
+> "A change from another device was merged."
+
+This does not interrupt the user's workflow, but it tells them that synchronization did something they should be aware of. The situation becomes even more important when a conflict-resolution strategy causes a user's change to be discarded. If Last-Write-Wins is being used and another update has a later timestamp, the user's change may lose the conflict. In that case, silently replacing the user's work can be confusing and potentially dangerous. The application could instead notify the user that their change was not retained and, where appropriate, give them an opportunity to review or enter the information again. The goal is not to expose the entire conflict-resolution algorithm to the user. The goal is to make important changes to their data visible.
+
+![Offline-first layers](/assets/img/offline-architecture/conflict-resolution.png)
+_Fig 1 - Offline-first architecture: This shows conflict resolution._
+
+### 5. Sync History and Audit Log
+The final element is a synchronization history or audit log. This becomes particularly important in systems where data is sensitive, regulated, or operationally important. A synchronization history can record events such as:
+
+* when synchronization occurred,
+* what changes were synchronized,
+* whether synchronization succeeded or failed,
+* whether conflicts were detected, and
+* how those conflicts were resolved.
+
+This creates a history of what happened to the data as it moved between the device and the server. For example, if a user notices that a record contains unexpected information, an administrator or support engineer can investigate the synchronization history instead of simply asking,*"What happened?"*. They can trace the sequence of events and determine whether the record was changed locally, synchronized to the server, modified by another device, or affected by a conflict-resolution rule. This is especially valuable in enterprise systems because synchronization is no longer just a background technical process. It becomes part of the system's data history.
+
+![Offline-first layers](/assets/img/offline-architecture/resolution-sync.png)
+_Fig 1 - Offline-first architecture: This shows sync data._
+
+
+
+
 
