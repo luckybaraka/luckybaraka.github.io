@@ -145,8 +145,11 @@ But there is another important part of the design that is easy to overlook: **th
 The first thing an offline-first application should communicate is whether the device currently has a connection that can be used for synchronization. This does not necessarily need to be a large message saying *"You are offline."* A small indicator in the application header can be enough. For example, when the device loses connectivity, the application could indicate that changes are being stored locally. When connectivity returns, the indicator can change to show that synchronization is taking place. The important thing is that the user should not be left wondering, `"Did my change actually save?"`
 If the user edits a record while offline, the application should make it clear that the change has been saved locally even though it has not yet reached the server. This gives the user confidence that being offline does not mean their work has been lost.
 
-![Offline-first layers](/assets/img/offline-architecture/offline-online.png)
-_Fig 1 - Offline-first architecture: This shows if the status is offline or online._
+<div style="display: flex; justify-content: center; width: 100%;">
+  <img src="/assets/img/offline-architecture/local-data-view.png"
+       alt="Offline-first architecture: This shows if the status is offline or online"
+       style="width: 30%; height: auto;">
+</div>
 
 ### 2. Local-First Data View
 The second important part of the interface is how data is loaded. In a traditional application, navigating to a screen might trigger a request to the server (the remote server). An offline-first application takes a different approach. The application can read the data from its local database first. This means that when the user opens a screen, the application does not necessarily need to wait for a network request before displaying the data. It can immediately show the latest version that exists locally.
@@ -157,8 +160,11 @@ That local version may contain two things:
 
 For example, suppose the server says that a patient's status is `ACTIVE`. The user changes it to `INACTIVE` while offline. The local database now contains `INACTIVE`, even though the server still contains `ACTIVE`. If the user navigates away and comes back to that record, the application should show `INACTIVE` because that is the latest state known to the device. This is one of the major advantages of local-first design. The application does not have to make a network request every time the user navigates between screens. The network becomes important for synchronization rather than for every interaction.
 
-![Offline-first layers](/assets/img/offline-architecture/local-data-view.png)
-_Fig 1 - Offline-first architecture: This shows the local data view._
+<div style="display: flex; justify-content: center; width: 100%;">
+  <img src="/assets/img/offline-architecture/local-data-view.png"
+       alt="Offline-first architecture: This shows the local data view"
+       style="width: 30%; height: auto;">
+</div>
 
 ### 3. Pending Changes Queue
 Behind the interface, the application may have an operation queue containing changes that have not yet reached the server. These operations can remain in the local queue until synchronization becomes possible. For the normal user, the application does not necessarily need to expose all of these operations. However, having visibility into the queue is extremely useful for administrators, developers, and support teams.
@@ -171,8 +177,11 @@ For example, the system could show information such as:
 
 This becomes particularly useful when monitoring an offline-first system in production. Imagine that the queue normally contains a few pending operations and then suddenly grows to thousands. At the same time, no operations are successfully leaving the queue. That could indicate that something is wrong with the synchronization engine, the network connection, or the server receiving the changes. The queue therefore becomes more than just a mechanism for synchronization. It also becomes an important source of operational visibility.
 
-![Offline-first layers](/assets/img/offline-architecture/pending-changes.png)
-_Fig 1 - Offline-first architecture: This shows pending changes._
+<div style="display: flex; justify-content: center; width: 100%;">
+  <img src="/assets/img/offline-architecture/pending-changes.png"
+       alt="Offline-first architecture: This shows pending changes"
+       style="width: 30%; height: auto;">
+</div>
 
 ### 4. Conflict Resolution Notification
 Conflicts are another situation that the interface needs to communicate carefully. Suppose two devices were working with the same record while offline. Both devices make different changes, and later they reconnect. The synchronization system may determine that the changes conflict and apply a conflict-resolution strategy such as Last-Write-Wins. From the system's perspective, the conflict may already be resolved. But from the user's perspective, something important may have happened to their data. For example, the application might display a small notification:
@@ -181,8 +190,11 @@ Conflicts are another situation that the interface needs to communicate carefull
 
 This does not interrupt the user's workflow, but it tells them that synchronization did something they should be aware of. The situation becomes even more important when a conflict-resolution strategy causes a user's change to be discarded. If Last-Write-Wins is being used and another update has a later timestamp, the user's change may lose the conflict. In that case, silently replacing the user's work can be confusing and potentially dangerous. The application could instead notify the user that their change was not retained and, where appropriate, give them an opportunity to review or enter the information again. The goal is not to expose the entire conflict-resolution algorithm to the user. The goal is to make important changes to their data visible.
 
-![Offline-first layers](/assets/img/offline-architecture/conflict-resolution.png)
-_Fig 1 - Offline-first architecture: This shows conflict resolution._
+<div style="display: flex; justify-content: center; width: 100%;">
+  <img src="/assets/img/offline-architecture/conflict-resolution.png"
+       alt="Offline-first architecture: This shows conflict resolution"
+       style="width: 30%; height: auto;">
+</div>
 
 ### 5. Sync History and Audit Log
 The final element is a synchronization history or audit log. This becomes particularly important in systems where data is sensitive, regulated, or operationally important. A synchronization history can record events such as:
