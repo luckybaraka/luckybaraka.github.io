@@ -118,7 +118,7 @@ Here you have one synchronous follower, the rest are asynchronous. You always ha
 > Fully synchronous replication across *all* followers is dangerous because any one node failure blocks every write. This is why you almost never want it.
 
 ## Multi-Leader Replication (What If Every Datacenter Could Write?)
-Single-leader has a critical weakness: **every write must go through one specific node**. If your users are in Tokyo, São Paulo, and Berlin, and your leader is in Virginia, every write takes a round trip to Virginia and back — 150+ milliseconds of avoidable latency. The solution: let each datacenter have its own leader. Writes in Tokyo go to the Tokyo leader. Each leader replicates to the others asynchronously. The catch comes when two datacenters modify the same data at the same time.
+Single-leader has a critical weakness: **every write must go through one specific node**. If your users are in Tokyo, São Paulo, and Berlin, and your leader is in Virginia, every write takes a round trip to Virginia and back — 150+ milliseconds of avoidable latency. The solution is that we let each datacenter have its own leader. Writes in Tokyo go to the Tokyo leader. Each leader replicates to the others asynchronously. The catch comes when two datacenters modify the same data at the same time.
 
 ![Multi-leader replication across datacenters](/assets/img/04-multi-leader.png)
 _Fig 4 — Multi-leader replication: each datacenter has its own leader. Async cross-replication means concurrent writes to the same row can conflict._
@@ -155,7 +155,7 @@ _Fig 6 — Leaderless replication: clients write to multiple nodes in parallel. 
 ### Catching up: read repair and anti-entropy
 **Read repair:** Is when a client reads from multiple nodes and gets back different versions, it writes the newer value back to the stale node. Lazy, on-demand healing. Works great for frequently read data; rarely read data can stay stale for a long time.
 
-**Anti-entropy:** This is a background process continuously compares data across replicas and copies missing writes. It uses a **Merkle tree** - the same data structure used in certificate transparency and cryptocurrency — to efficiently find diverged sections without comparing every single record.
+**Anti-entropy:** This is a background process continuously compares data across replicas and copies missing writes. It uses a **Merkle tree** - the same data structure used in certificate transparency and cryptocurrency - to efficiently find diverged sections without comparing every single record.
 
 ## Quorums - The Math That Makes This Safe
 How can you trust a system where anyone can write and there's no master? The answer is a beautiful piece of mathematics.
@@ -167,7 +167,7 @@ Say you have **N** total replica nodes. You require:
 >
 > **`W + R > N`**
 >
-> If the write quorum (`W`) plus the read quorum (`R`) exceeds the total replicas (`N`), the two sets **must overlap by at least one node**. That overlapping node holds the latest write — so every read is guaranteed to see it.
+> If the write quorum (`W`) plus the read quorum (`R`) exceeds the total replicas (`N`), the two sets **must overlap by at least one node**. That overlapping node holds the latest write - so every read is guaranteed to see it.
 {: .prompt-tip }
 
 ![Quorum overlap with W + R > N](/assets/img/07-quorum.png)
@@ -184,7 +184,7 @@ _Fig 7 — When W + R > N, the write and read quorums must overlap by at least o
 ### Sloppy quorums - availability over correctness
 What if a network partition means you can't reach enough of your designated N nodes? Some systems offer a **sloppy quorum**: write to *any* W reachable nodes, even outside the "home" set for this data. When the partition heals, do a **hinted handoff** - transfer those writes to the correct nodes. Dynamo does this. Riak does this. It's a deliberate choice: stay up and sort out consistency later.
 
-> **The limits of quorums:** Quorums don't protect you from everything. Two clients writing to the same key concurrently can both get quorum and produce a conflict. A write that partially succeeds (some nodes get it, the writing node then dies) leaves the cluster in an ambiguous state. Quorums give you probabilistic consistency in the common case — not ironclad guarantees.
+> **The limits of quorums:** Quorums don't protect you from everything. Two clients writing to the same key concurrently can both get quorum and produce a conflict. A write that partially succeeds (some nodes get it, the writing node then dies) leaves the cluster in an ambiguous state. Quorums give you probabilistic consistency in the common case - not ironclad guarantees.
 
 
 ## The Consistency Guarantee Ladder
@@ -193,11 +193,10 @@ What if a network partition means you can't reach enough of your designated N no
 ![The consistency guarantee ladder](/assets/img/08-consistency-ladder.png)
 _Fig 8 — The consistency ladder, from linearizability at the top to eventual consistency at the bottom. Stronger guarantees cost more; weaker ones scale further._
 
-### Linearizability — the gold standard
-Linearizability means the system behaves as if there is only one copy of the data. Every read gets the most recent write, globally. No stale reads, ever.
-The cost is brutal. You need a consensus protocol like Raft or Paxos. Every operation requires multiple round trips for global ordering agreement. This is slow, and will reject operations during network partitions rather than serve stale data. Google Spanner achieves this globally using TrueTime (GPS + atomic clocks). Nobody else has atomic clocks in their data centers.
+### Linearizability
+Linearizability means the system behaves as if there is only one copy of the data. Every read gets the most recent write, globally. No stale reads, ever. The cost is brutal. You need a consensus protocol like Raft or Paxos. Every operation requires multiple round trips for global ordering agreement. This is slow, and will reject operations during network partitions rather than serve stale data. Google Spanner achieves this globally using TrueTime (GPS + atomic clocks). Nobody else has atomic clocks in their data centers.
 
-### Causal consistency - the sweet spot
+### Causal consistency
 Causal consistency is weaker than linearizability but dramatically cheaper. The rule: if operation A caused operation B (A happened before B), then everyone sees A before B. Operations with no causal relationship can be seen in any order. To implement this, each operation carries a **version vector** - a compact record of which operations it causally depends on. You'll never see an answer before the question that caused it, because that dependency is explicitly tracked. This provides most of what applications actually need, at a fraction of the cost of linearizability.
 
 ### The CAP theorem - and why it's slightly misunderstood
@@ -238,11 +237,11 @@ _Fig 9 — Decision framework: start from your write geography and conflict tole
 5. **Underestimating the complexity of multi-leader.** Many engineering teams add multi-leader for low write latency across regions, then spend months fighting conflict resolution bugs. Start with single-leader and geo-routing; graduate to multi-leader only when you've exhausted simpler options.
 
 ## Where This Is All Going
-The frontier in replication is making the hard trade-offs disappear. Google Spanner showed that with enough hardware - atomic clocks, dedicated fiber, global infrastructure - you can get linearizable consistency at global scale. Calvin, CockroachDB, and YugabyteDB are trying to do the same on commodity hardware by getting very clever about transaction ordering. Conflict-free Replicated Data Types (CRDTs) are making multi-leader replication safer by designing away conflicts at the data structure level. If your data type can only be merged, not conflicted, the whole problem goes away. Redis, Riak, and several academic systems are pushing this frontier. And the operational side is getting better too. Automatic failover that once required expensive external tooling is now built into most databases. Replication topology changes that required downtime can happen live. What required a specialist in 2005 is table stakes in 2025. But the fundamental physics hasn't changed. Light travels at the speed of light. Networks partition. Clocks drift. Data on two machines will sometimes disagree. Replication is the art of making those facts of the universe as invisible as possible to the people depending on your system. The more you understand the mechanisms — why a follower can lag, why W + R > N matters, why a multi-leader system needs conflict resolution — the better your instincts for where your system's invisible weaknesses are hiding. And the less surprised you'll be at 3 a.m. when something unexpected surfaces.
+The frontier in replication is making the hard trade-offs disappear. Google Spanner showed that with enough hardware - atomic clocks, dedicated fiber, global infrastructure - you can get linearizable consistency at global scale. Calvin, CockroachDB, and YugabyteDB are trying to do the same on commodity hardware by getting very clever about transaction ordering. Conflict-free Replicated Data Types (CRDTs) are making multi-leader replication safer by designing away conflicts at the data structure level. If your data type can only be merged, not conflicted, the whole problem goes away. Redis, Riak, and several academic systems are pushing this frontier. And the operational side is getting better too. Automatic failover that once required expensive external tooling is now built into most databases. Replication topology changes that required downtime can happen live. What required a specialist in 2005 is table stakes in 2025. But the fundamental physics hasn't changed. Light travels at the speed of light. Networks partition. Clocks drift. Data on two machines will sometimes disagree. Replication is the art of making those facts of the universe as invisible as possible to the people depending on your system. The more you understand the mechanisms — why a follower can lag, why W + R > N matters, why a multi-leader system needs conflict resolution - the better your instincts for where your system's invisible weaknesses are hiding. And the less surprised you'll be at 3 a.m. when something unexpected surfaces.
 
-## Further reading — from a friend
+## Further reading from a friend
 If you enjoyed thinking about replication, you'll love the sibling problem: **caching**. My friend and fellow techie **Bala** wrote a wonderful piece called [*Caching Will Humble You*](https://balagrivine.github.io/posts/caching-will-humble-you/) — go read it. Bala is one of the sharpest engineers I know, a genuine contributor to the technology community, and the kind of friend whose writing makes you a better engineer just by reading it. Replication and caching are two sides of the same coin (both are about keeping copies of data and surviving the consequences), so his post pairs perfectly with this one.
 
-Seriously — go read [Bala's blog](https://balagrivine.github.io/). You'll thank me later.
+Seriously, go read [Bala's blog](https://balagrivine.github.io/). You'll thank me later.
 
 *Thanks for reading. If this helped you think more clearly about how data stays alive across machines, that's the whole point.*
