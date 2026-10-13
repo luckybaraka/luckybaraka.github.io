@@ -1,6 +1,6 @@
 ---
 title: "Messaging Architecture With NATS"
-date: 2026-05-28 00:00:00 +0000
+date: 2026-09-28 00:00:00 +0000
 categories: [Distributed Systems, Backend Engineering]
 tags: [distributed-systems, nats, jetstream, message-queues, backend-engineering, system-design]
 ---
